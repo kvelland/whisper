@@ -198,62 +198,6 @@
       margin-top: 0.4rem;
     }
 
-    /* ── API Key ── */
-    .api-bar {
-      display: flex; gap: 0.75rem; align-items: stretch;
-      margin-bottom: 3.5rem;
-      animation: fadeDown 0.8s 0.1s ease both;
-    }
-
-    .api-bar label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.68rem;
-      letter-spacing: 0.2em;
-      color: var(--amber);
-      text-transform: uppercase;
-      display: flex; align-items: center;
-      white-space: nowrap;
-      padding: 0 0.5rem;
-    }
-
-    .api-bar input {
-      flex: 1;
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 0.75rem 1rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      color: var(--cream);
-      letter-spacing: 0.05em;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-
-    .api-bar input:focus {
-      border-color: var(--amber);
-      box-shadow: 0 0 0 3px rgba(232,160,32,0.1);
-    }
-
-    .api-bar input::placeholder { color: var(--muted); }
-
-    .btn-save {
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 0.75rem 1.25rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      letter-spacing: 0.15em;
-      color: var(--muted);
-      cursor: pointer;
-      text-transform: uppercase;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-
-    .btn-save:hover { border-color: var(--amber); color: var(--amber); }
-    .btn-save.saved { color: #4ade80; border-color: rgba(74,222,128,0.4); }
 
     /* ── Main grid ── */
     .main-grid {
@@ -783,18 +727,6 @@
     <p class="tagline">Audio &bull; Transcription &bull; Intelligence</p>
   </header>
 
-  <!-- API Key -->
-  <div class="api-bar">
-    <label for="apiKeyInput">API Key</label>
-    <input
-      type="password"
-      id="apiKeyInput"
-      placeholder="sk-or-v1-••••••••••••••••"
-      autocomplete="off"
-      spellcheck="false"
-    />
-    <button class="btn-save" id="btnSave" onclick="saveApiKey()">Save</button>
-  </div>
 
   <!-- Main grid: Record + Upload -->
   <div class="main-grid">
@@ -991,10 +923,6 @@
 
   // ── Init ───────────────────────────────────────────────────────────────────
   window.addEventListener('DOMContentLoaded', () => {
-    const _injected = '__OPENROUTER_API_KEY__';
-    const serverKey = _injected.startsWith('__') ? '' : _injected;
-    const key = localStorage.getItem('openrouter_api_key') || serverKey;
-    if (key) document.getElementById('apiKeyInput').value = key;
     initWaveformCanvas();
     setupScrollReveal();
   });
@@ -1008,18 +936,8 @@
   }
 
   // ── API Key ────────────────────────────────────────────────────────────────
-  function saveApiKey() {
-    const key = document.getElementById('apiKeyInput').value.trim();
-    localStorage.setItem('openrouter_api_key', key);
-    const btn = document.getElementById('btnSave');
-    btn.textContent = 'Saved';
-    btn.classList.add('saved');
-    setTimeout(() => { btn.textContent = 'Save'; btn.classList.remove('saved'); }, 1800);
-  }
-
   function getApiKey() {
-    return document.getElementById('apiKeyInput').value.trim() ||
-           localStorage.getItem('openrouter_api_key') || '';
+    return '__OPENROUTER_API_KEY__';
   }
 
   // ── Waveform ───────────────────────────────────────────────────────────────
