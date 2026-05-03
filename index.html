@@ -10,6 +10,107 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* ── PIN Gate ── */
+    #pinGate {
+      position: fixed; inset: 0; z-index: 1000;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+    #pinGate.unlocked { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    .pin-box {
+      text-align: center;
+      animation: fadeDown 0.7s ease both;
+    }
+
+    .pin-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.2rem;
+      font-weight: 300;
+      letter-spacing: 0.2em;
+      color: var(--amber2);
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+
+    .pin-sub {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.28em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 2.5rem;
+    }
+
+    .pin-dots {
+      display: flex; gap: 0.75rem; justify-content: center;
+      margin-bottom: 2rem;
+    }
+
+    .pin-dot {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(232,160,32,0.35);
+      background: transparent;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+    .pin-dot.filled {
+      background: var(--amber);
+      border-color: var(--amber);
+      box-shadow: 0 0 10px rgba(232,160,32,0.5);
+    }
+    .pin-dot.error {
+      background: #ef4444;
+      border-color: #ef4444;
+      box-shadow: 0 0 10px rgba(239,68,68,0.5);
+      animation: shake 0.35s ease;
+    }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%      { transform: translateX(-6px); }
+      40%      { transform: translateX(6px); }
+      60%      { transform: translateX(-4px); }
+      80%      { transform: translateX(4px); }
+    }
+
+    .pin-keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.6rem;
+      max-width: 220px;
+      margin: 0 auto;
+    }
+
+    .pin-key {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 1rem 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      color: var(--cream);
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .pin-key:hover { border-color: var(--amber); color: var(--amber); background: rgba(232,160,32,0.06); }
+    .pin-key:active { transform: scale(0.93); }
+    .pin-key.del { color: var(--muted); font-size: 0.85rem; }
+
+    .pin-hint {
+      margin-top: 1.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      color: var(--muted);
+      text-transform: uppercase;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .pin-hint.visible { opacity: 1; }
+
     :root {
       --bg:       #07090f;
       --bg2:      #0d1120;
@@ -642,6 +743,34 @@
 </head>
 <body>
 
+<!-- PIN Gate -->
+<div id="pinGate">
+  <div class="pin-box">
+    <div class="pin-logo">Whisper</div>
+    <div class="pin-sub">Enter access code</div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="pin-keypad">
+      <button class="pin-key" onclick="pinPress('1')">1</button>
+      <button class="pin-key" onclick="pinPress('2')">2</button>
+      <button class="pin-key" onclick="pinPress('3')">3</button>
+      <button class="pin-key" onclick="pinPress('4')">4</button>
+      <button class="pin-key" onclick="pinPress('5')">5</button>
+      <button class="pin-key" onclick="pinPress('6')">6</button>
+      <button class="pin-key" onclick="pinPress('7')">7</button>
+      <button class="pin-key" onclick="pinPress('8')">8</button>
+      <button class="pin-key" onclick="pinPress('9')">9</button>
+      <button class="pin-key" onclick="pinPress('0')">0</button>
+      <button class="pin-key del" onclick="pinDel()">&#9003;</button>
+    </div>
+    <div class="pin-hint" id="pinHint">Incorrect code</div>
+  </div>
+</div>
+
 <div class="bg-glow"></div>
 
 <div class="container">
@@ -802,6 +931,64 @@
 </div>
 
 <script>
+  // ── PIN Gate ───────────────────────────────────────────────────────────────
+  (function() {
+    const CORRECT = '__SITE_PIN__';
+    const SESSION_KEY = 'whisper_auth';
+
+    // Already unlocked this session
+    if (sessionStorage.getItem(SESSION_KEY) === 'ok') {
+      document.getElementById('pinGate').classList.add('unlocked');
+      return;
+    }
+
+    let entry = '';
+
+    function updateDots() {
+      for (let i = 0; i < 4; i++) {
+        document.getElementById('d' + i).classList.toggle('filled', i < entry.length);
+      }
+    }
+
+    function triggerError() {
+      const dots = document.querySelectorAll('.pin-dot');
+      dots.forEach(d => { d.classList.remove('filled'); d.classList.add('error'); });
+      document.getElementById('pinHint').classList.add('visible');
+      setTimeout(() => {
+        dots.forEach(d => d.classList.remove('error'));
+        document.getElementById('pinHint').classList.remove('visible');
+        entry = '';
+        updateDots();
+      }, 800);
+    }
+
+    window.pinPress = function(char) {
+      if (entry.length >= 4) return;
+      entry += char;
+      updateDots();
+      if (entry.length === 4) {
+        if (entry === CORRECT) {
+          sessionStorage.setItem(SESSION_KEY, 'ok');
+          document.getElementById('pinGate').classList.add('unlocked');
+        } else {
+          triggerError();
+        }
+      }
+    };
+
+    window.pinDel = function() {
+      entry = entry.slice(0, -1);
+      updateDots();
+    };
+
+    // Keyboard support
+    document.addEventListener('keydown', function(e) {
+      if (document.getElementById('pinGate').classList.contains('unlocked')) return;
+      if (e.key >= '0' && e.key <= '9') pinPress(e.key);
+      if (e.key === 'Backspace') pinDel();
+    });
+  })();
+
   // ── State ──────────────────────────────────────────────────────────────────
   let mediaRecorder = null;
   let audioChunks = [];
